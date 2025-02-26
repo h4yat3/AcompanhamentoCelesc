@@ -207,7 +207,7 @@ fun formSection(
                 validationError = state.errors[""]
             )
         }
-        //  UNIDADE CONSUMIDORA
+    //  UNIDADE CONSUMIDORA
         item(span = { GridItemSpan(4) }) {
             Column {
                 Text(
@@ -252,7 +252,7 @@ fun formSection(
                         }
                     }
 
-                    // Add new UC button
+    // Add new UC button
                     Card(
                         modifier = Modifier
                             .width(200.dp)
@@ -398,7 +398,6 @@ fun formSection(
                             .height(400.dp)
                             .padding(8.dp)
                             .clickable {
-                                // Add a new inversor when clicked
                                 onUpdate(state.copy(inversores = state.inversores + Inversor()))
                             },
                         elevation = 4.dp,
@@ -426,10 +425,10 @@ fun formSection(
             onClick = {
                 val validated = validateCliente(state)
                 if (validated.errors.isEmpty()) {
-                    saveClientData(validated) // Save data if no errors
-                    onUpdate(Cliente())       // Clear the form after saving
+                    saveClientData(validated)
+                    onUpdate(Cliente())
                 } else {
-                    onUpdate(validated)       // Update the state to display errors
+                    onUpdate(validated)
                 }
             },
             modifier = Modifier
@@ -458,7 +457,6 @@ fun saveClientData(cliente: Cliente) {
 
 
 
-// Updated ValidatedTextField with better grid support
 @Composable
 fun validatedTextField(
     label: String,
@@ -500,14 +498,14 @@ fun validatedTextField(
     validationError: String?,
     modifier: Modifier = Modifier,
     visualTransformation: VisualTransformation = VisualTransformation.None,
-    placeholder: String = "" // Add placeholder parameter
+    placeholder: String = ""
 ) {
     Column(modifier = modifier.padding(vertical = 4.dp)) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
             label = { Text(text = if (isRequired) "$label *" else label) },
-            placeholder = { Text(placeholder) }, // Set placeholder text
+            placeholder = { Text(placeholder) },
             isError = validationError != null,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,

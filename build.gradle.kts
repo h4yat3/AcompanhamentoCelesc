@@ -20,6 +20,7 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation("org.jetbrains.compose.foundation:foundation-desktop:1.6.0")
     implementation("androidx.collection:collection-ktx:1.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }
 
 compose.desktop {

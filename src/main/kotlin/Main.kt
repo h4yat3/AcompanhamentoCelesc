@@ -15,6 +15,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import kotlinx.serialization.*
+import kotlinx.serialization.json.*
+import java.io.File
 
 fun main() = application {
     val windowState = remember { WindowState(size = DpSize(900.dp, 600.dp)) }
@@ -110,6 +113,27 @@ fun formSection(
                 validationError = state.errors["eMail"]
             )
         }
+//-------------------------------------------------------------------------------------------------------//
+        item(span = { GridItemSpan(4) }) {
+            Text(
+                text = "Homologação Micro-Geração Celesc",
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
+// DATA DE REQUISIÇÃO DO PROTOCOLO
+        item(span = { GridItemSpan(2) }) {
+            validatedTextField(
+                label = "Data de Solicitação do Protocolo",
+                value = state.dataRequisicaoProtocolo,
+                onValueChange = { newText ->
+                    onUpdate(state.copy(dataRequisicaoProtocolo = newText.filter { it.isDigit() }.take(8)))
+                },
+                validationError = state.errors[""],
+                visualTransformation = DateVisualTransformation(),
+                placeholder = "DD/MM/AAAA"
+            )
+        }
 //  PROTOCOLO
         item(span = { GridItemSpan(2) }) {
             validatedTextField(
@@ -121,15 +145,70 @@ fun formSection(
                 validationError = state.errors["protocolo"]
             )
         }
-//  DADOS CELESC
-        item(span = { GridItemSpan(4) }) {
-            Text(
-                text = "Credenciais Celesc",
-                style = MaterialTheme.typography.h6,
-                modifier = Modifier.padding(vertical = 8.dp)
+// DATA DE ENTRADA DO PROJETO NA CELESC
+        item(span = { GridItemSpan(2) }) {
+            validatedTextField(
+                label = "Data de entrada do projeto na Celesc",
+                value = state.dataEntradaProjeto,
+                onValueChange = { newText ->
+                    onUpdate(state.copy(dataEntradaProjeto = newText.filter { it.isDigit() }.take(8)))
+                },
+                validationError = state.errors[""],
+                visualTransformation = DateVisualTransformation(),
+                placeholder = "DD/MM/AAAA"
             )
         }
-//  UNIDADE CONSUMIDORA
+// DATA DE APROVAÇÃO DO PROJETO NA CELESC
+        item(span = { GridItemSpan(2) }) {
+            validatedTextField(
+                label = "Data de aprovação do projeto",
+                value = state.dataAprovacaoProjeto,
+                onValueChange = { newText ->
+                    onUpdate(state.copy(dataAprovacaoProjeto = newText.filter { it.isDigit() }.take(8)))
+                },
+                validationError = state.errors[""],
+                visualTransformation = DateVisualTransformation(),
+                placeholder = "DD/MM/AAAA"
+            )
+        }
+// DATA DE SOLICITAÇÃO DE VISTORIA
+        item(span = { GridItemSpan(2) }) {
+            validatedTextField(
+                label = "Data de Solicitação de Vistoria",
+                value = state.dataRequisicaoVistoria,
+                onValueChange = { newText ->
+                    onUpdate(state.copy(dataRequisicaoVistoria = newText.filter { it.isDigit() }.take(8)))
+                },
+                validationError = state.errors[""],
+                visualTransformation = DateVisualTransformation(),
+                placeholder = "DD/MM/AAAA"
+            )
+        }
+// DATA DE APROVAÇÃO DE VISTORIA
+        item(span = { GridItemSpan(2) }) {
+            validatedTextField(
+                label = "Data de Aprovação da Vistoria",
+                value = state.dataAprovacaoVistoria,
+                onValueChange = { newText ->
+                    onUpdate(state.copy(dataAprovacaoVistoria = newText.filter { it.isDigit() }.take(8)))
+                },
+                validationError = state.errors[""],
+                visualTransformation = DateVisualTransformation(),
+                placeholder = "DD/MM/AAAA"
+            )
+        }
+//  TRT / CFT
+        item(span = { GridItemSpan(2) }) {
+            validatedTextField(
+                label = "TRT/CFT",
+                value = state.trtCft,
+                onValueChange = { newText ->
+                    onUpdate(state.copy(trtCft = newText.filter { it.isDigit() }))
+                },
+                validationError = state.errors[""]
+            )
+        }
+        //  UNIDADE CONSUMIDORA
         item(span = { GridItemSpan(4) }) {
             Column {
                 Text(
@@ -199,6 +278,15 @@ fun formSection(
                 }
             }
         }
+//----------------------------------------------------------------------------------------------------------------
+//  CREDENCIAIS CELESC
+        item(span = { GridItemSpan(4) }) {
+            Text(
+                text = "Credenciais Celesc",
+                style = MaterialTheme.typography.h6,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+        }
 //  USUARIO CELESC
         item(span = { GridItemSpan(2) }) {
             validatedTextField(
@@ -233,12 +321,12 @@ fun formSection(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     maxItemsInEachRow = 5
                 ) {
-                    // ✅ Loop through existing inverters and display fields
+    //  Loop through existing inverters and display fields
                     state.inversores.forEachIndexed { index, inversor ->
                         Card(
                             modifier = Modifier
                                 .width(350.dp)
-                                .height(450.dp) // Adjusted height to fit fields
+                                .height(400.dp)
                                 .padding(8.dp),
                             elevation = 4.dp,
                         ) {
@@ -249,7 +337,7 @@ fun formSection(
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
 
-                                // ✅ Marca do Inversor
+    //  Marca do Inversor
                                 validatedTextField(
                                     label = "Marca do Inversor",
                                     value = inversor.marca,
@@ -259,10 +347,10 @@ fun formSection(
                                         }
                                         onUpdate(state.copy(inversores = updatedList))
                                     },
-                                    validationError = ""
+                                    validationError = state.errors[""]
                                 )
 
-                                // ✅ Número de Série
+    //  Número de Série
                                 validatedTextField(
                                     label = "Número de Série",
                                     value = inversor.sn,
@@ -272,10 +360,10 @@ fun formSection(
                                         }
                                         onUpdate(state.copy(inversores = updatedList))
                                     },
-                                    validationError = ""
+                                    validationError = state.errors[""]
                                 )
 
-                                // ✅ Login do Inversor
+    //  Login do Inversor
                                 validatedTextField(
                                     label = "Login do Inversor",
                                     value = inversor.login,
@@ -285,10 +373,10 @@ fun formSection(
                                         }
                                         onUpdate(state.copy(inversores = updatedList))
                                     },
-                                    validationError = ""
+                                    validationError = state.errors[""]
                                 )
 
-                                // ✅ Senha do Inversor
+    //  Senha do Inversor
                                 validatedTextField(
                                     label = "Senha do Inversor",
                                     value = inversor.senha,
@@ -298,17 +386,17 @@ fun formSection(
                                         }
                                         onUpdate(state.copy(inversores = updatedList))
                                     },
-                                    validationError = ""
+                                    validationError = state.errors[""]
                                 )
                             }
                         }
                     }
 
-                    // ✅ Card Button to Add New Inversor
+    //  BOTÃO PARA ADICIONAR NOVO INVERSOR
                     Card(
                         modifier = Modifier
                             .width(350.dp)
-                            .height(450.dp)
+                            .height(400.dp)
                             .padding(8.dp)
                             .clickable {
                                 // Add a new inversor when clicked
@@ -334,7 +422,7 @@ fun formSection(
         }
 
 //----------------------------------------------------------------------------------------------------//
-        // Submit Button
+//   BOTÃO DE ENVIAR CADASTRO
         item(span = { GridItemSpan(4) }) {
             Button(
                 onClick = {

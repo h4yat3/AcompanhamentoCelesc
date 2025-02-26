@@ -1,3 +1,6 @@
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class Cliente(
     val idCliente: String = "",
     val nome: String = "",
@@ -15,9 +18,10 @@ data class Cliente(
     val loginCelesc: String = "",
     val senhaCelesc: String = "",
     val inversores: List<Inversor> = listOf(Inversor()),
-    val errors: Map<String, String> = emptyMap(),
+    val errors: Map<String, String> = emptyMap()
 )
 
+@Serializable
 data class Inversor(
     val marca: String = "",
     val sn: String = "",
@@ -25,6 +29,7 @@ data class Inversor(
     val senha: String = ""
 )
 
+@Serializable
 data class UnidadeConsumidora(
     val numero: String = ""
 )

@@ -202,8 +202,7 @@ fun formSection(
             validatedTextField(
                 label = "TRT/CFT",
                 value = state.trtCft,
-                onValueChange = { newText ->
-                    onUpdate(state.copy(trtCft = newText.filter { it.isDigit() }))
+                onValueChange = { onUpdate(state.copy(trtCft = it))
                 },
                 validationError = state.errors[""]
             )
@@ -226,8 +225,8 @@ fun formSection(
                     state.unidadeConsumidora.forEachIndexed { index, uc ->
                         Card(
                             modifier = Modifier
-                                .width(210.dp)
-                                .height(130.dp)
+                                .width(200.dp)
+                                .height(180.dp)
                                 .padding(8.dp),
                             elevation = 4.dp,
                         ) {
@@ -257,7 +256,7 @@ fun formSection(
                     Card(
                         modifier = Modifier
                             .width(200.dp)
-                            .height(150.dp)
+                            .height(180.dp)
                             .padding(8.dp)
                             .clickable {
                                 onUpdate(state.copy(unidadeConsumidora = state.unidadeConsumidora + UnidadeConsumidora()))
@@ -420,29 +419,42 @@ fun formSection(
                 }
             }
         }
-
 //----------------------------------------------------------------------------------------------------//
 //   BOTÃO DE ENVIAR CADASTRO
-        item(span = { GridItemSpan(4) }) {
-            Button(
-                onClick = {
-                    val validated = validateCliente(state)
-                    if (validated.errors.isEmpty()) {
-                        printClienteData(validated)
-                    } else {
-                        onUpdate(validated)
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(0.5f).height(70.dp).padding(8.dp)
-            ) {
-                Text("Enviar")
-            }
+    item(span = { GridItemSpan(4) }) {
+        Button(
+            onClick = {
+                val validated = validateCliente(state)
+                if (validated.errors.isEmpty()) {
+                    saveClientData(validated) // Save data if no errors
+                    onUpdate(Cliente())       // Clear the form after saving
+                } else {
+                    onUpdate(validated)       // Update the state to display errors
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .height(70.dp)
+                .padding(8.dp)
+        ) {
+            Text("Salvar Dados")
+        }
         }
     }
-
 }
+fun saveClientData(cliente: Cliente) {
+    try {
+        val json = Json {prettyPrint = true}
+        val jsonData = json.encodeToString(cliente)
+        val filePath = System.getProperty("user.home") + "/Desktop/cliente_data.txt"
+        val file = File(filePath)
 
-
+        file.appendText(jsonData)
+        println("Data saved successfully at: $filePath")  // Confirm save location
+    } catch (e: Exception) {
+        println("Error saving data: ${e.message}")
+    }
+}
 
 
 
@@ -476,7 +488,6 @@ fun validatedTextField(
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
-
     }
 }
 
@@ -513,47 +524,13 @@ fun validatedTextField(
         }
     }
 }
-
 private fun validateCliente(cliente: Cliente): Cliente {
     val errors = mutableMapOf<String, String>()
-
     if (cliente.idCliente.isBlank()) {
         errors["idCliente"] = "ID Cliente é obrigatório"
     }
     if (cliente.nome.isBlank()) {
         errors["nome"] = "Nome é obrigatório"
     }
-
     return cliente.copy(errors = errors)
-}
-
-// Modified print function:
-private fun printClienteData(cliente: Cliente) {
-    with(cliente) {
-        println("=== Dados do Cliente ===")
-        println("ID Cliente: $idCliente")
-        println("Nome: $nome")
-        println("CPF/CNPJ: $cpfCnpj")
-        println("E-mail: $eMail")
-        println("Data Nascimento: $dataNascimento")
-        println("Protocolo: $protocolo")
-        println("Login Celesc: $loginCelesc")
-        println("Senha Celesc: $senhaCelesc")
-
-        val nonEmptyInversores = inversores.filter { inversor ->
-            inversor.marca.isNotBlank() ||
-                    inversor.sn.isNotBlank() ||
-                    inversor.login.isNotBlank() ||
-                    inversor.senha.isNotBlank()
-        }
-
-        println("\nInversores Registrados:")
-        nonEmptyInversores.forEachIndexed { index, inversor ->
-            println("Inversor ${index + 1}:")
-            println("  Marca: ${inversor.marca}")
-            println("  S/N: ${inversor.sn}")
-            println("  Login: ${inversor.login}")
-            println("  Senha: ${inversor.senha}")
-        }
-    }
 }

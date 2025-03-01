@@ -14,10 +14,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import kotlinx.serialization.*
-import kotlinx.serialization.json.*
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import java.io.File
+import kotlinx.serialization.json.Json
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Check
+
+
 
 fun main() = application {
     val windowState = remember { WindowState(size = DpSize(900.dp, 600.dp)) }
@@ -37,28 +41,81 @@ fun main() = application {
 @Composable
 fun formSection(
     state: Cliente,
-    onUpdate: (Cliente) -> Unit,
-    modifier: Modifier = Modifier
+    onUpdate: (Cliente) -> Unit
 ) {
+    var isEditMode by remember { mutableStateOf(true) }
+    var originalCliente by remember { mutableStateOf<Cliente?>(null) }
+
+    LaunchedEffect(state.idCliente) {
+        if (state.idCliente.isNotBlank() && originalCliente == null) {
+            isEditMode = false
+            originalCliente = state
+        }
+    }
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier.padding(16.dp)
+        modifier = Modifier.padding(12.dp)
     ) {
         item(span = { GridItemSpan(4) }) {
-            Text(
-                text = "Dados do Cliente",
-                style = MaterialTheme.typography.h6,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = "Dados do Cliente",
+                    style = MaterialTheme.typography.h6,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    IconButton(onClick = {
+                        isEditMode = !isEditMode
+                    }) {
+                        Icon(
+                            imageVector = if (isEditMode) Icons.Default.Check else Icons.Default.Close,
+                            contentDescription = if (isEditMode) "Desbloquear Edição" else "Bloquear Edição",
+                            tint = if (isEditMode) MaterialTheme.colors.primary else MaterialTheme.colors.error
+                        )
+                    }
+
+                    IconButton(onClick = {
+                        val foundCliente = searchClientData(state.idCliente, state.nome)
+                        if (foundCliente != null) {
+                            onUpdate(foundCliente)
+                        } else {
+                            println("No matching record found.")
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Buscar Cliente"
+                        )
+                    }
+                    IconButton(onClick = {
+                        onUpdate(Cliente())
+                        isEditMode = true // Reset to edit mode when clearing form
+                    }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Resetar Campos"
+                        )
+                    }
+                }
+            }
         }
 //  ID Cliente
         item(span = { GridItemSpan(2) }) {
             validatedTextField(
                 label = "ID Cliente",
                 value = state.idCliente,
-                onValueChange = { onUpdate(state.copy(idCliente = it)) },
+                onValueChange = { newText ->
+                    onUpdate(state.copy(idCliente = newText.filter { it.isDigit() }.take(6)))
+                },
                 isRequired = true,
                 validationError = state.errors["idCliente"]
             )
@@ -95,7 +152,7 @@ fun formSection(
                 onValueChange = { newText ->
                     onUpdate(state.copy(cpfCnpj = newText.filter { it.isDigit() }.take(14)))
                 },
-                validationError = state.errors["cpfCnpj"],
+                validationError = state.errors[""],
                 visualTransformation = when (state.cpfCnpj.length) {
                     in 0..11 -> CpfVisualTransformation()
                     in 12..14 -> CnpjVisualTransformation()
@@ -110,7 +167,7 @@ fun formSection(
                 label = "E-mail",
                 value = state.eMail,
                 onValueChange = { onUpdate(state.copy(eMail = it)) },
-                validationError = state.errors["eMail"]
+                validationError = state.errors[""],
             )
         }
 //-------------------------------------------------------------------------------------------------------//
@@ -379,6 +436,7 @@ fun formSection(
                                 validatedTextField(
                                     label = "Senha do Inversor",
                                     value = inversor.senha,
+                                    enabled = isEditMode,
                                     onValueChange = { newSenha ->
                                         val updatedList = state.inversores.toMutableList().apply {
                                             this[index] = this[index].copy(senha = newSenha)
@@ -420,38 +478,23 @@ fun formSection(
         }
 //----------------------------------------------------------------------------------------------------//
 //   BOTÃO DE ENVIAR CADASTRO
-    item(span = { GridItemSpan(4) }) {
-        Button(
-            onClick = {
-                val validated = validateCliente(state)
-                if (validated.errors.isEmpty()) {
-                    saveClientData(validated)
-                    onUpdate(Cliente())
-                } else {
-                    onUpdate(validated)
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth(0.5f)
-                .height(70.dp)
-                .padding(8.dp)
-        ) {
-            Text("Salvar Dados")
+        item(span = { GridItemSpan(4) }) {
+            Button(
+                onClick = {
+                    val validated = validateCliente(state)
+                    if (validated.errors.isEmpty()) {
+                        saveClientData(validated)
+                        isEditMode = false
+                        originalCliente = validated
+                    } else {
+                        onUpdate(validated)
+                    }
+                },
+                enabled = isEditMode,
+            ) {
+                Text("Salvar")
+            }
         }
-        }
-    }
-}
-fun saveClientData(cliente: Cliente) {
-    try {
-        val json = Json {prettyPrint = true}
-        val jsonData = json.encodeToString(cliente)
-        val filePath = System.getProperty("user.home") + "/Desktop/cliente_data.txt"
-        val file = File(filePath)
-
-        file.appendText(jsonData)
-        println("Data saved successfully at: $filePath")  // Confirm save location
-    } catch (e: Exception) {
-        println("Error saving data: ${e.message}")
     }
 }
 
@@ -465,45 +508,15 @@ fun validatedTextField(
     isRequired: Boolean = false,
     validationError: String?,
     modifier: Modifier = Modifier,
-    visualTransformation: VisualTransformation = VisualTransformation.None
-) {
-    Column(modifier = modifier.padding(vertical = 4.dp)) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(text = if (isRequired) "$label *" else label) },
-            isError = validationError != null,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            visualTransformation = visualTransformation
-        )
-
-        validationError?.let {
-            Text(
-                text = it,
-                color = MaterialTheme.colors.error,
-                style = MaterialTheme.typography.caption,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
-    }
-}
-
-@Composable
-fun validatedTextField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    isRequired: Boolean = false,
-    validationError: String?,
-    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     placeholder: String = ""
 ) {
-    Column(modifier = modifier.padding(vertical = 4.dp)) {
+    Column(modifier = modifier.padding(vertical = 1.dp)) {
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
+            enabled = enabled,
             label = { Text(text = if (isRequired) "$label *" else label) },
             placeholder = { Text(placeholder) },
             isError = validationError != null,
@@ -517,18 +530,64 @@ fun validatedTextField(
                 text = it,
                 color = MaterialTheme.colors.error,
                 style = MaterialTheme.typography.caption,
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.padding(start = 2.dp)
             )
         }
     }
 }
+
+
+
 private fun validateCliente(cliente: Cliente): Cliente {
     val errors = mutableMapOf<String, String>()
-    if (cliente.idCliente.isBlank()) {
-        errors["idCliente"] = "ID Cliente é obrigatório"
-    }
-    if (cliente.nome.isBlank()) {
-        errors["nome"] = "Nome é obrigatório"
+
+    with(cliente) {
+        if (idCliente.isBlank()) errors["idCliente"] = "ID obrigatório"
+        if (nome.isBlank()) errors["nome"] = "Nome obrigatório"
+        if (cpfCnpj.length !in 11..14) errors["cpfCnpj"] = "CPF/CNPJ inválido"
+        if (!eMail.contains("@")) errors["eMail"] = "E-mail inválido"
     }
     return cliente.copy(errors = errors)
+}
+
+
+
+fun saveClientData(cliente: Cliente) {
+    try {
+        val file = File(System.getProperty("user.home") + "/Desktop/cliente_data.txt")
+        val existing = if (file.exists()) Json.decodeFromString<MutableList<Cliente>>(file.readText())
+        else mutableListOf()
+        val index = existing.indexOfFirst { it.idCliente == cliente.idCliente }
+        if (index != -1) {
+            existing[index] = cliente
+        } else {
+            existing.add(cliente)
+        }
+    } catch (e: Exception) {
+        println("Error saving data: ${e.message}")
+    }
+}
+
+
+
+fun searchClientData(id: String, nome: String): Cliente? {
+    val file = File("${System.getProperty("user.home")}/Desktop/cliente_data.txt")
+
+    if (!file.exists()) {
+        println("Error: File not found at ${file.absolutePath}")
+        return null
+    }
+    return try {
+        val clientes: List<Cliente> = Json.decodeFromString(file.readText())
+        clientes.firstNotNullOfOrNull { cliente ->
+            when {
+                id.isNotBlank() && cliente.idCliente == id.padStart(4, '0') -> cliente
+                nome.isNotBlank() && cliente.nome.equals(nome, ignoreCase = true) -> cliente
+                else -> null
+            }
+        }
+    } catch (e: Exception) {
+        println("Error parsing JSON: ${e.message}")
+        null
+    }
 }

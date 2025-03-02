@@ -1,5 +1,6 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
+
 plugins {
     kotlin("jvm") version "1.9.22"
     id("org.jetbrains.compose") version "1.6.0"
@@ -17,8 +18,6 @@ repositories {
 
 dependencies {
     implementation(compose.desktop.currentOs)
-    implementation("org.jetbrains.compose.foundation:foundation-desktop:1.6.0")
-    implementation("androidx.collection:collection-ktx:1.4.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 }
 

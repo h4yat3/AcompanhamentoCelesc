@@ -4,21 +4,26 @@ import kotlinx.serialization.Serializable
 data class Cliente(
     val idCliente: String = "",
     val nome: String = "",
+    val dataNascimento: String = "",
     val cpfCnpj: String = "",
     val eMail: String = "",
-    val dataNascimento: String = "",
     val dataRequisicaoProtocolo: String = "",
+    val protocolo: String = "",
     val dataEntradaProjeto: String = "",
     val dataAprovacaoProjeto: String = "",
     val dataRequisicaoVistoria: String = "",
     val dataAprovacaoVistoria: String = "",
-    val protocolo: String = "",
     val trtCft: String = "",
-    val unidadeConsumidora: List<UnidadeConsumidora> = listOf(UnidadeConsumidora()),
     val loginCelesc: String = "",
     val senhaCelesc: String = "",
-    val inversores: List<Inversor> = listOf(Inversor()),
+    val unidadeConsumidora: List<UnidadeConsumidora> = emptyList(),
+    val inversores: List<Inversor> = emptyList(),
     val errors: Map<String, String> = emptyMap()
+)
+
+@Serializable
+data class UnidadeConsumidora(
+    val numero: String = ""
 )
 
 @Serializable
@@ -27,9 +32,4 @@ data class Inversor(
     val sn: String = "",
     val login: String = "",
     val senha: String = ""
-)
-
-@Serializable
-data class UnidadeConsumidora(
-    val numero: String = ""
 )

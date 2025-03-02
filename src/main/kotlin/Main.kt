@@ -20,12 +20,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import java.io.File
 import kotlinx.serialization.json.Json
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.graphics.Color
 import kotlinx.serialization.encodeToString
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import kotlinx.coroutines.delay
 
 
@@ -95,7 +95,6 @@ fun main() = application {
 }
 
 
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun formSection(
@@ -134,7 +133,7 @@ fun formSection(
                                 onUpdate(Cliente())
                             }) {
                                 Icon(
-                                    imageVector = Icons.Default.Close,
+                                    Icons.AutoMirrored.Filled.ArrowBack,
                                     contentDescription = "Resetar Campos"
                                 )
                             }

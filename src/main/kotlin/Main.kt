@@ -17,21 +17,23 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import java.io.File
 import kotlinx.serialization.json.Json
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.ui.graphics.Color
 import kotlinx.serialization.encodeToString
-
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import kotlinx.coroutines.delay
 
 
 fun main() = application {
     val windowState = remember { WindowState(size = DpSize(900.dp, 900.dp)) }
     val initialClients = remember { loadClientData() }
     val clientList = remember { mutableStateOf(initialClients) }
+    var notificationMessage by remember { mutableStateOf<String?>(null) }
 
     Window(
         onCloseRequest = ::exitApplication,
@@ -41,27 +43,53 @@ fun main() = application {
         var cliente by remember { mutableStateOf(Cliente()) }
         var searchQuery by remember { mutableStateOf("") }
 
-        Column(modifier = Modifier.fillMaxSize()) {
-            formSection(
-                modifier = Modifier.weight(0.7f),
-                state = cliente,
-                onUpdate = { updatedCliente ->
-                    cliente = updatedCliente
-                    searchQuery = updatedCliente.nome
-                },
-                onSave = { savedCliente ->
-                    clientList.value = loadClientData()
+        LaunchedEffect(notificationMessage) {
+            notificationMessage?.let {
+                delay(3000)
+                notificationMessage = null
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                formSection(
+                    modifier = Modifier.weight(0.7f),
+                    state = cliente,
+                    onUpdate = { updatedCliente ->
+                        cliente = updatedCliente
+                        searchQuery = updatedCliente.nome
+                    },
+                    onSave = { savedCliente ->
+                        clientList.value = loadClientData()
+                    },
+                    showNotification = { message ->
+                        notificationMessage = message
+                    }
+                )
+                clientListSection(
+                    modifier = Modifier.weight(0.3f),
+                    searchQuery = searchQuery,
+                    clientList = clientList.value,
+                    onItemClick = { selectedClient ->
+                        cliente = selectedClient
+                        searchQuery = selectedClient.nome
+                    }
+                )
+            }
+            notificationMessage?.let { message ->
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
+                        .background(Color(0xFF4CAF50).copy(alpha = 0.9f), RoundedCornerShape(8.dp))
+                ) {
+                    Text(
+                        text = message,
+                        color = Color.White,
+                        modifier = Modifier.padding(16.dp)
+                    )
                 }
-            )
-            clientListSection(
-                modifier = Modifier.weight(0.3f),
-                searchQuery = searchQuery,
-                clientList = clientList.value,
-                onItemClick = { selectedClient ->
-                    cliente = selectedClient
-                    searchQuery = selectedClient.nome
-                }
-            )
+            }
         }
     }
 }
@@ -74,68 +102,17 @@ fun formSection(
     state: Cliente,
     onUpdate: (Cliente) -> Unit,
     onSave: (Cliente) -> Unit,
+    showNotification: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isEditMode by remember { mutableStateOf(true) }
-    var originalCliente by remember { mutableStateOf<Cliente?>(null) }
-
-    LaunchedEffect(state.idCliente) {
-        if (state.idCliente.isNotBlank() && originalCliente == null) {
-            isEditMode = false
-            originalCliente = state
-        }
-    }
+    val isSaveEnabled = state.idCliente.isNotBlank() && state.nome.isNotBlank()
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier // Apply the modifier here
+        modifier = modifier
             .padding(12.dp)
     ) {
-        item(span = { GridItemSpan(4) }) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    IconButton(onClick = {
-                        isEditMode = !isEditMode
-                    }) {
-                        Icon(
-                            imageVector = if (isEditMode) Icons.Default.Check else Icons.Default.Close,
-                            contentDescription = if (isEditMode) "Desbloquear Edição" else "Bloquear Edição",
-                            tint = if (isEditMode) MaterialTheme.colors.primary else MaterialTheme.colors.error
-                        )
-                    }
-                    IconButton(onClick = {
-                        val foundCliente = searchClientData(state.idCliente, state.nome)
-                        if (foundCliente != null) {
-                            onUpdate(foundCliente)
-                        } else {
-                            println("No matching record found.")
-                        }
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Buscar Cliente"
-                        )
-                    }
-                    IconButton(onClick = {
-                        onUpdate(Cliente())
-                        isEditMode = true // Reset to edit mode when clearing form
-                    }) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Resetar Campos"
-                        )
-                    }
-                }
-            }
-        }
 //----------------------------------------------------------------------------------------------------------------
 //Seção cliente
         item(span = { GridItemSpan(2) }) {
@@ -146,11 +123,22 @@ fun formSection(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column {
-                        Text(
-                            text = "Dados do Cliente",
-                            style = MaterialTheme.typography.h6,
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        )
+                        Row {
+                            Text(
+                                text = "Dados do Cliente",
+                                style = MaterialTheme.typography.h6,
+                                modifier = Modifier.padding(vertical = 10.dp)
+                            )
+                            Spacer(modifier.padding(10.dp))
+                            IconButton(onClick = {
+                                onUpdate(Cliente())
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Resetar Campos"
+                                )
+                            }
+                        }
 //  ID Cliente
                         validatedTextField(
                             label = "ID Cliente",
@@ -171,23 +159,19 @@ fun formSection(
                         )
 //  Second Row
 //  Data de Nascimento
-                        validatedTextField(
+                        dateTextField(
                             label = "Data de Nascimento",
                             value = state.dataNascimento,
-                            onValueChange = { newText ->
-                                onUpdate(state.copy(dataNascimento = newText.filter { it.isDigit() }.take(8)))
-                            },
-                            validationError = state.errors["dataNascimento"],
-                            visualTransformation = DateVisualTransformation(),
-                            placeholder = "DD/MM/AAAA"
+                            onValueChange = { newDate ->
+                                onUpdate(state.copy(dataNascimento = newDate)) },
+                            validationError = state.errors["dataNascimento"]
                         )
 //  CPF/CNPJ
                         validatedTextField(
                             label = "CPF/CNPJ",
                             value = state.cpfCnpj,
                             onValueChange = { newText ->
-                                onUpdate(state.copy(cpfCnpj = newText.filter { it.isDigit() }.take(14)))
-                            },
+                                onUpdate(state.copy(cpfCnpj = newText.filter { it.isDigit() }.take(14))) },
                             validationError = state.errors[""],
                             visualTransformation = when (state.cpfCnpj.length) {
                                 in 0..11 -> CpfVisualTransformation()
@@ -216,20 +200,20 @@ fun formSection(
                         Text(
                             text = "Unidades Consumidoras",
                             style = MaterialTheme.typography.h6,
-                            modifier = Modifier.padding(vertical = 8.dp)
+                            modifier = Modifier.padding(vertical = 5.dp)
                         )
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(5.dp),
                             maxItemsInEachRow = 5
                         ) {
                             state.unidadeConsumidora.forEachIndexed { index, uc ->
                                 Card(
                                     modifier = Modifier
                                         .width(200.dp)
-                                        .height(180.dp)
-                                        .padding(8.dp),
+                                        .height(130.dp)
+                                        .padding(1.dp),
                                     elevation = 4.dp,
                                 ) {
                                     Column(modifier = Modifier.padding(16.dp)) {
@@ -253,12 +237,12 @@ fun formSection(
                                     }
                                 }
                             }
-                            // Add new UC button
+// Add new UC button
                             Card(
                                 modifier = Modifier
                                     .width(200.dp)
-                                    .height(180.dp)
-                                    .padding(8.dp)
+                                    .height(130.dp)
+                                    .padding(1.dp)
                                     .clickable {
                                         onUpdate(state.copy(unidadeConsumidora = state.unidadeConsumidora + UnidadeConsumidora()))
                                     },
@@ -287,18 +271,15 @@ fun formSection(
                 Text(
                     text = "Homologação Micro-Geração Celesc",
                     style = MaterialTheme.typography.h6,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(vertical = 12.dp)
                 )
 // DATA DE REQUISIÇÃO DO PROTOCOLO
-                validatedTextField(
+                dateTextField(
                     label = "Data de Solicitação do Protocolo",
                     value = state.dataRequisicaoProtocolo,
-                    onValueChange = { newText ->
-                        onUpdate(state.copy(dataRequisicaoProtocolo = newText.filter { it.isDigit() }.take(8)))
-                    },
+                    onValueChange = { newDate ->
+                        onUpdate(state.copy(dataRequisicaoProtocolo = newDate)) },
                     validationError = state.errors[""],
-                    visualTransformation = DateVisualTransformation(),
-                    placeholder = "DD/MM/AAAA"
                 )
 //  PROTOCOLO
                 validatedTextField(
@@ -310,48 +291,36 @@ fun formSection(
                     validationError = state.errors["protocolo"]
                 )
 // DATA DE ENTRADA DO PROJETO NA CELESC
-                validatedTextField(
+                dateTextField(
                     label = "Data de entrada do projeto na Celesc",
                     value = state.dataEntradaProjeto,
-                    onValueChange = { newText ->
-                        onUpdate(state.copy(dataEntradaProjeto = newText.filter { it.isDigit() }.take(8)))
-                    },
+                    onValueChange = { newDate ->
+                        onUpdate(state.copy(dataEntradaProjeto = newDate)) },
                     validationError = state.errors[""],
-                    visualTransformation = DateVisualTransformation(),
-                    placeholder = "DD/MM/AAAA"
                 )
 // DATA DE APROVAÇÃO DO PROJETO NA CELESC
-                validatedTextField(
+                dateTextField(
                     label = "Data de aprovação do projeto",
                     value = state.dataAprovacaoProjeto,
-                    onValueChange = { newText ->
-                        onUpdate(state.copy(dataAprovacaoProjeto = newText.filter { it.isDigit() }.take(8)))
-                    },
+                    onValueChange = { newDate ->
+                        onUpdate(state.copy(dataAprovacaoProjeto = newDate)) },
                     validationError = state.errors[""],
-                    visualTransformation = DateVisualTransformation(),
-                    placeholder = "DD/MM/AAAA"
                 )
 // DATA DE SOLICITAÇÃO DE VISTORIA
-                validatedTextField(
+                dateTextField(
                     label = "Data de Solicitação de Vistoria",
                     value = state.dataRequisicaoVistoria,
-                    onValueChange = { newText ->
-                        onUpdate(state.copy(dataRequisicaoVistoria = newText.filter { it.isDigit() }.take(8)))
-                    },
+                    onValueChange = { newDate ->
+                        onUpdate(state.copy(dataRequisicaoVistoria = newDate)) },
                     validationError = state.errors[""],
-                    visualTransformation = DateVisualTransformation(),
-                    placeholder = "DD/MM/AAAA"
                 )
 // DATA DE APROVAÇÃO DE VISTORIA
-                validatedTextField(
+                dateTextField(
                     label = "Data de Aprovação da Vistoria",
                     value = state.dataAprovacaoVistoria,
-                    onValueChange = { newText ->
-                        onUpdate(state.copy(dataAprovacaoVistoria = newText.filter { it.isDigit() }.take(8)))
-                    },
+                    onValueChange = { newDate ->
+                        onUpdate(state.copy(dataAprovacaoVistoria = newDate)) },
                     validationError = state.errors[""],
-                    visualTransformation = DateVisualTransformation(),
-                    placeholder = "DD/MM/AAAA"
                 )
 //  TRT / CFT
                 validatedTextField(
@@ -364,7 +333,6 @@ fun formSection(
                 )
             }
         }
-
 //----------------------------------------------------------------------------------------------------------------
         item(span = { GridItemSpan(2) }) {
             Column {
@@ -399,7 +367,6 @@ fun formSection(
                     style = MaterialTheme.typography.h6,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
-
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -412,7 +379,7 @@ fun formSection(
                             modifier = Modifier
                                 .width(350.dp)
                                 .height(400.dp)
-                                .padding(8.dp),
+                                .padding(1.dp),
                             elevation = 4.dp,
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
@@ -421,7 +388,6 @@ fun formSection(
                                     style = MaterialTheme.typography.h6,
                                     modifier = Modifier.padding(bottom = 8.dp)
                                 )
-
 //  Marca do Inversor
                                 validatedTextField(
                                     label = "Marca do Inversor",
@@ -433,8 +399,19 @@ fun formSection(
                                         onUpdate(state.copy(inversores = updatedList))
                                     },
                                     validationError = state.errors[""]
+    // potencia do inversor
                                 )
-
+                                validatedTextField(
+                                    label = "Potência do Inversor",
+                                    value = inversor.potencia,
+                                    onValueChange = { newPotencia ->
+                                        val updatedList = state.inversores.toMutableList().apply {
+                                            this[index] = this[index].copy(potencia = newPotencia)
+                                        }
+                                        onUpdate(state.copy(inversores = updatedList))
+                                    },
+                                    validationError = state.errors[""]
+                                )
 //  Número de Série
                                 validatedTextField(
                                     label = "Número de Série",
@@ -447,7 +424,6 @@ fun formSection(
                                     },
                                     validationError = state.errors[""]
                                 )
-
 //  Login do Inversor
                                 validatedTextField(
                                     label = "Login do Inversor",
@@ -460,12 +436,10 @@ fun formSection(
                                     },
                                     validationError = state.errors[""]
                                 )
-
 //  Senha do Inversor
                                 validatedTextField(
                                     label = "Senha do Inversor",
                                     value = inversor.senha,
-                                    enabled = isEditMode,
                                     onValueChange = { newSenha ->
                                         val updatedList = state.inversores.toMutableList().apply {
                                             this[index] = this[index].copy(senha = newSenha)
@@ -477,13 +451,12 @@ fun formSection(
                             }
                         }
                     }
-
 //  BOTÃO PARA ADICIONAR NOVO INVERSOR
                     Card(
                         modifier = Modifier
                             .width(350.dp)
                             .height(400.dp)
-                            .padding(8.dp)
+                            .padding(1.dp)
                             .clickable {
                                 onUpdate(state.copy(inversores = state.inversores + Inversor()))
                             },
@@ -512,23 +485,25 @@ fun formSection(
                 onClick = {
                     val validated = validateCliente(state)
                     if (validated.errors.isEmpty()) {
-                        saveClientData(validated)
-                        isEditMode = false
-                        originalCliente = validated
-                        onSave(validated)
+                        try {
+                            saveClientData(validated)
+                            showNotification("Cliente salvo com sucesso!") // Success
+                            onSave(validated)
+                        } catch (e: Exception) {
+                            showNotification("Erro ao salvar: ${e.message}") // Error
+                        }
                     } else {
+                        showNotification("Corrija os campos obrigatórios") // Validation error
                         onUpdate(validated)
                     }
                 },
-                enabled = isEditMode,
+                enabled = isSaveEnabled,
             ) {
                 Text("Salvar")
             }
         }
     }
 }
-
-
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -551,14 +526,12 @@ fun clientListSection(
             }
         }
     }
-
     Column(modifier = modifier.fillMaxSize()) {
         Divider(
             modifier = Modifier.fillMaxWidth(),
             thickness = 1.dp,
             color = Color.Gray
         )
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -577,7 +550,6 @@ fun clientListSection(
         }
     }
 }
-
 
 @Composable
 fun clientListItem(
@@ -601,8 +573,6 @@ fun clientListItem(
         )
     }
 }
-
-
 
 @Composable
 fun validatedTextField(
@@ -639,33 +609,22 @@ fun validatedTextField(
     }
 }
 
-
-
 private fun validateCliente(cliente: Cliente): Cliente {
     val errors = mutableMapOf<String, String>()
     with(cliente) {
         if (idCliente.isBlank()) errors["idCliente"] = "ID obrigatório"
 
         if (nome.isBlank()) errors["nome"] = "Nome do Cliente é obrigatório"
-
-        if (cpfCnpj.length !in listOf(11, 14) || !cpfCnpj.all { it.isDigit() }) {
-            errors["cpfCnpj"] = "CPF/CNPJ inválido"
-        }
-
-        val emailRegex = Regex("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\$")
-        if (!eMail.matches(emailRegex)) errors["eMail"] = "E-mail inválido"
     }
     return cliente.copy(errors = errors)
 }
 
-
-
 fun saveClientData(cliente: Cliente) {
     try {
-        val file = File(System.getProperty("user.home"), "Desktop/cliente_data.txt").apply {
-            parentFile?.mkdirs() // Create desktop directory if needed
+        val desktopPath = System.getProperty("user.home") + "/Desktop"
+        val file = File(desktopPath, "cliente_data.txt").apply {
+            parentFile?.mkdirs()
         }
-
         val existing = if (file.exists()) {
             try {
                 Json.decodeFromString<MutableList<Cliente>>(file.readText())
@@ -676,51 +635,56 @@ fun saveClientData(cliente: Cliente) {
         } else {
             mutableListOf()
         }
-
         val index = existing.indexOfFirst { it.idCliente == cliente.idCliente }
         if (index != -1) {
             existing[index] = cliente
+            println("Updated existing client with ID: ${cliente.idCliente}")
         } else {
             existing.add(cliente)
+            println("Added new client with ID: ${cliente.idCliente}")
         }
 
-        file.writeText(Json.encodeToString(existing))
-        println("Successfully saved ${cliente.idCliente}")
+        val jsonString = Json.encodeToString(existing)
+        file.writeText(jsonString)
     } catch (e: Exception) {
-        println("Critical save error: ${e.stackTraceToString()}")
-    }
-}
-
-
-
-fun searchClientData(id: String, nome: String): Cliente? {
-    val file = File("${System.getProperty("user.home")}/Desktop/cliente_data.txt")
-
-    if (!file.exists()) {
-        println("Error: File not found at ${file.absolutePath}")
-        return null
-    }
-    return try {
-        val clientes: List<Cliente> = Json.decodeFromString(file.readText())
-        clientes.firstNotNullOfOrNull { cliente ->
-            when {
-                id.isNotBlank() && cliente.idCliente == id -> cliente
-                nome.isNotBlank() && cliente.nome.equals(nome, ignoreCase = true) -> cliente
-                else -> null
-            }
-        }
-    } catch (e: Exception) {
-        println("Error parsing JSON: ${e.message}")
-        null
+        throw Exception("Falha ao salvar: ${e.message}") // Rethrow with custom message
     }
 }
 
 fun loadClientData(): List<Cliente> {
     return try {
-        val file = File("${System.getProperty("user.home")}/Desktop/cliente_data.txt")
-        if (file.exists()) Json.decodeFromString(file.readText())
-        else emptyList()
+        val desktopPath = System.getProperty("user.home") + "/Desktop"
+        val file = File(desktopPath, "cliente_data.txt")
+        if (file.exists()) {
+            val jsonString = file.readText()
+            Json.decodeFromString<List<Cliente>>(jsonString)
+        } else {
+            println("File does not exist, returning empty list.")
+            emptyList()
+        }
     } catch (e: Exception) {
+        println("Error loading client data: ${e.message}")
         emptyList()
     }
+}
+
+@Composable
+fun dateTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    validationError: String?,
+    modifier: Modifier = Modifier
+) {
+    validatedTextField(
+        label = label,
+        value = value,
+        onValueChange = { newText ->
+            onValueChange(newText.filter { it.isDigit() }.take(8))
+        },
+        validationError = validationError,
+        visualTransformation = DateVisualTransformation(),
+        placeholder = "DD/MM/AAAA",
+        modifier = modifier
+    )
 }

@@ -29,6 +29,7 @@ data class UnidadeConsumidora(
 @Serializable
 data class Inversor(
     val marca: String = "",
+    val potencia: String ="",
     val sn: String = "",
     val login: String = "",
     val senha: String = ""
